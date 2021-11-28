@@ -1,37 +1,51 @@
 import logo from './logo.svg';
 import './App.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ListItem from './components/ListItem';
+import axios from 'axios';
+import loadingGif from './loading.gif';
 
 function App() {
-  const apiUrl = 'https://61a2549d014e1900176de8fa.mockapi.io/';
+  const apiUrl = 'https://61a2549d014e1900176de8fa.mockapi.io';
   const notifications = {
     delete: 'Todo deleted successfully',
     create: 'Todo created successfully',
     update: 'Todo updated successfully',
   }
-  const [todos, setTodos] = useState();
+
+  const fetchData = async () => {
+    const response = await axios.get(`${apiUrl}/todos`);
+    setTodos(response.data);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchData();
+    return () => {
+    };
+  }, []);
+  const [todos, setTodos] = useState([]);
   const [newTodo, setNewTodo] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
   const [notification, setNotification] = useState();
+  const [loading, setLoading] = useState(true)
   const handleChange = (event) => {
     setNewTodo(event.target.value);
   }
 
-  const addTodo = () => {
-    setTodos([...todos,
-    {
-      id: generateId(),
+  const addTodo = async () => {
+    const response = await axios.post(`${apiUrl}/todos`, {
       name: newTodo
-    }])
+    });
+    setTodos([...todos, response.data])
     setNewTodo('');
     alert(notifications.create);
   }
 
-  const generateId = () => todos.length ? todos[todos.length - 1].id + 1 : 1;
-
-  const deleteTodo = (id) => {
+  const deleteTodo = async (id) => {
+    const response = await axios.delete(`${apiUrl}/todos/${id}`);
+    console.log(response)
     setTodos(todos.filter(todo => todo.id !== id))
     alert(notifications.delete)
   }
@@ -42,8 +56,11 @@ function App() {
     setEditMode(true);
   }
 
-  const updateTodo = () => {
-    setTodos(todos.map(todo => todo.id === editId ? ({ ...todo, name: newTodo }) : todo))
+  const updateTodo = async () => {
+    const response = await axios.put(`${apiUrl}/todos/${editId}`, {
+      name: newTodo
+    });
+    setTodos(todos.map(todo => todo.id === editId ? response.data : todo))
     setNewTodo('');
     setEditId(null);
     setEditMode(false)
@@ -80,7 +97,11 @@ function App() {
           {`${editMode ? 'Update' : 'Add'} todo`}
         </button>
 
-        {!editMode && <ul className="list-group">
+        {loading &&
+          <img src={loadingGif} alt="loading" />
+        }
+
+        {(!editMode || loading) && <ul className="list-group">
           {todos.map((todo) =>
             <ListItem
               key={todo.id}
